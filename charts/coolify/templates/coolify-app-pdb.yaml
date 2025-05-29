@@ -1,0 +1,15 @@
+{{- if .Values.coolifyApp.enabled }}
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ include "coolify.coolifyApp.fullname" . }}-pdb
+  namespace: {{ include "coolify.namespace" . }}
+  labels:
+    {{- include "coolify.labels" (merge (dict "componentName" "core") .) | nindent 4 }}
+spec:
+  minAvailable: 0
+  selector:
+    matchLabels:
+      {{- include "coolify.selectorLabels" (merge (dict "componentName" "core") .) | nindent 6 }}
+{{- end }}

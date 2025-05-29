@@ -1,0 +1,308 @@
+global:
+  namespace: coolify
+  registryUrl: ghcr.io
+  storageClassName: ""
+
+coolifyApp:
+  enabled: true
+  replicaCount: 1
+  image:
+    repository: ghcr.io/coollabsio/coolify
+    tag: "" # Defaults to Chart.appVersion
+    pullPolicy: IfNotPresent
+  service:
+    type: ClusterIP
+    port: 8000 # External port (APP_PORT)
+    targetPort: 8080 # Internal container port
+  workingDir: /var/www/html
+  # Database migration configuration
+  migration:
+    enabled: true
+    timeout: 300 # Timeout in seconds for migration initContainer
+    runSeeders: true # Set to true if you want to run database seeders
+  # Add host networking options for Docker socket access
+  hostNetwork:
+    enabled: false # Set to true if Coolify needs to manage Docker on the host
+  extraHosts:
+    - name: host.docker.internal
+      ip: host-gateway # This may need adjustment based on your cluster setup
+  resources:
+    limits:
+      memory: "1Gi"
+      cpu: "1000m"
+    requests:
+      memory: "512Mi"
+      cpu: "250m"
+  # Health check configuration matching docker-compose
+  healthCheck:
+    enabled: true
+    path: /api/health
+    initialDelaySeconds: 30
+    periodSeconds: 5
+    timeoutSeconds: 2
+    failureThreshold: 10
+    successThreshold: 1
+  php:
+    memoryLimit: 256M
+    fpmPmControl: dynamic
+    fpmPmStartServers: 1
+    fpmPmMinSpareServers: 1
+    fpmPmMaxSpareServers: 10
+    # Additional PHP-FPM configuration
+    fpmPmMaxChildren: 20
+    fpmPmMaxRequests: 500
+  # Pod Disruption Budget configuration
+  podDisruptionBudget:
+    enabled: true
+    minAvailable: 1
+    # Alternative: maxUnavailable: 0
+  # Horizontal Pod Autoscaler configuration
+  autoscaling:
+    enabled: false
+    minReplicas: 1
+    maxReplicas: 10
+    targetCPUUtilizationPercentage: 80
+    targetMemoryUtilizationPercentage: 80
+    # Optional: Custom metrics can be added here
+    # customMetrics: []
+  # Init container resource configuration
+  initContainers:
+    setupStorage:
+      resources:
+        limits:
+          memory: "256Mi"
+          cpu: "200m"
+        requests:
+          memory: "128Mi"
+          cpu: "100m"
+    migration:
+      resources:
+        limits:
+          memory: "512Mi"
+          cpu: "500m"
+        requests:
+          memory: "256Mi"
+          cpu: "100m"
+
+postgresql:
+  enabled: true
+  auth:
+    # SECURITY: Use pre-generated secret for secure password management
+    existingSecret: "coolify-postgresql" # This will be created by our hook
+    secretKeys:
+      adminPasswordKey: postgres-password
+      userPasswordKey: password
+    # These values are used for secret generation, not by the subchart directly
+    postgresPassword: "" # Auto-generated if empty (used by our secret generation)
+    username: "coolify"
+    password: "" # Auto-generated if empty (used by our secret generation)
+    database: "coolify"
+  primary:
+    image:
+      repository: bitnami/postgresql
+      tag: 15.6.0
+      pullPolicy: IfNotPresent
+    persistence:
+      enabled: true
+      size: 5Gi
+      accessModes:
+        - ReadWriteOnce
+      storageClass: ""
+    resources: { }
+    securityContext:
+      enabled: true
+      readOnlyRootFilesystem: false
+  # Health check configuration (Bitnami chart uses liveness/readiness probes by default)
+  healthCheck:
+    enabled: true
+    initialDelaySeconds: 10
+    periodSeconds: 5
+    timeoutSeconds: 2
+    failureThreshold: 10
+
+redis:
+  enabled: true
+  architecture: standalone
+  auth:
+    enabled: true
+    sentinel: false
+    # SECURITY: Use pre-generated secret for secure password management
+    existingSecret: "coolify-redis" # This will be created by our hook
+    existingSecretPasswordKey: "redis-password"
+    # This value is used for secret generation, not by the subchart directly
+    password: "" # Auto-generated if empty (used by our secret generation)
+  image:
+    repository: bitnami/redis
+    tag: 7.2.4
+    pullPolicy: IfNotPresent
+  master:
+    persistence:
+      enabled: false
+    resources: { }
+  # Disable replica since we're using standalone
+  replica:
+    replicaCount: 0
+    persistence:
+      enabled: false
+  persistence:
+    enabled: false
+    size: 2Gi
+    accessModes: [ ReadWriteOnce ]
+    storageClassName: ""
+  service:
+    ports:
+      redis: 6379
+  # Redis configuration matching docker-compose
+  commonConfiguration: |-
+    save 20 1
+    loglevel warning
+  # Health check configuration is built into Bitnami chart
+
+soketi:
+  enabled: true
+  replicaCount: 1
+  image:
+    repository: ghcr.io/coollabsio/coolify-realtime
+    tag: 1.0.8
+    pullPolicy: Always
+  service:
+    type: ClusterIP
+    appPort: 6001 # SOKETI_PORT
+    metricsPort: 6002
+  debug: false
+  resources:
+    limits:
+      memory: "512Mi"
+      cpu: "500m"
+    requests:
+      memory: "256Mi"
+      cpu: "100m"
+  # Health check configuration matching docker-compose
+  healthCheck:
+    enabled: true
+    initialDelaySeconds: 10
+    periodSeconds: 5
+    timeoutSeconds: 2
+    failureThreshold: 10
+  extraHosts:
+    - name: host.docker.internal
+      ip: host-gateway
+
+# ConfigMap values - enhanced to match docker-compose environment
+config:
+  APP_NAME: Coolify
+  APP_ENV: production
+  APP_URL: http://localhost:8000
+  APP_DEBUG: false
+  DB_DATABASE: coolify
+  # PHP configuration from docker-compose
+  PHP_MEMORY_LIMIT: 256M
+  PHP_FPM_PM_CONTROL: dynamic
+  PHP_FPM_PM_START_SERVERS: 1
+  PHP_FPM_PM_MIN_SPARE_SERVERS: 1
+  PHP_FPM_PM_MAX_SPARE_SERVERS: 10
+  # Soketi configuration
+  SOKETI_DEBUG: false
+  # Database connection
+  DB_CONNECTION: pgsql
+  DB_HOST: "" # Will be set to postgres service name
+  DB_PORT: 5432
+  # Redis connection
+  REDIS_HOST: "" # Will be set to redis service name
+  REDIS_PORT: 6379
+  # Registry configuration
+  REGISTRY_URL: ghcr.io
+  # Laravel optimization settings
+  APP_OPTIMIZE: true
+  VIEW_COMPILED_PATH: /var/www/html/storage/framework/views
+  SESSION_LIFETIME: 120
+  SANCTUM_STATEFUL_DOMAINS: localhost:8000,127.0.0.1:8000
+
+# Secret values matching the .env.production file structure
+secrets:
+  # SECURITY NOTE: All secrets are auto-generated at deploy time if not provided.
+  # This ensures unique, random values for each deployment.
+  # To override any secret, use: --set secrets.SECRET_NAME=your-value
+
+  APP_ID: "" # Auto-generated: 32-character random string
+  APP_KEY: "" # Auto-generated: Laravel-compatible key with base64: prefix
+
+  # Root user configuration (optional)
+  ROOT_USERNAME: ""
+  ROOT_USER_EMAIL: ""
+  ROOT_USER_PASSWORD: "" # Auto-generated if root user is configured
+
+  # Database credentials
+  DB_USERNAME: coolify
+  DB_PASSWORD: "" # Auto-generated: 32-character secure password
+
+  # Redis credentials
+  REDIS_PASSWORD: "" # Auto-generated: 32-character secure password
+
+  # Pusher/Soketi credentials
+  PUSHER_APP_ID: "" # Auto-generated: 32-character random string
+  PUSHER_APP_KEY: "" # Auto-generated: 32-character random string
+  PUSHER_APP_SECRET: "" # Auto-generated: 32-character random string
+
+# Shared PVC configuration
+sharedDataPvc:
+  name: ""
+  size: 10Gi
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: ""
+
+# Security contexts with improved defaults
+# IMPORTANT: The main Coolify container requires root access (runAsUser: 0) for:
+# - Creating www-data user at runtime
+# - Setting file ownership and permissions  
+# - Configuring PHP-FPM and nginx services
+# - Running Laravel commands via 'su' as www-data user
+# Even when securityContext.enabled=false, the container will run as root for compatibility
+securityContext:
+  enabled: true
+  fsGroup: 0
+  runAsUser: 0
+  runAsGroup: 0
+  runAsNonRoot: false  # Coolify needs root for setup tasks
+  # Additional security options
+  allowPrivilegeEscalation: true   # Required for su/sudo operations
+  readOnlyRootFilesystem: false # Coolify needs write access
+  capabilities:
+    drop:
+      - ALL
+    add:
+      - CHOWN          # Change file ownership
+      - SETUID         # Set user ID
+      - SETGID         # Set group ID  
+      - DAC_OVERRIDE   # Override file permissions
+      - FOWNER         # File ownership operations
+      - SETPCAP        # Privilege operations
+
+# Network policies (optional)
+networkPolicy:
+  enabled: false
+  ingress: [ ]
+  egress: [ ]
+
+# Service monitor for Prometheus (optional)
+serviceMonitor:
+  enabled: false
+  namespace: ""
+  labels: { }
+
+ingress:
+  enabled: false
+  className: ""
+  annotations: { }
+  hosts:
+    - host: coolify.local
+      paths:
+        - path: /
+          pathType: Prefix
+  tls: [ ]
+  # Example:
+  # tls:
+  #   - secretName: coolify-tls
+  #     hosts:
+  #       - coolify.local

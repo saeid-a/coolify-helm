@@ -1,0 +1,92 @@
+{{ $fullname := include "coolify.fullname" . -}}
+{{ $namespace := include "coolify.namespace" . -}}
+{{ $coolifyAppServiceName := include "coolify.coolifyApp.serviceName" . -}}
+{{ $postgresServiceName := include "coolify.postgresql.serviceName" . -}}
+{{ $redisServiceName := include "coolify.redis.serviceName" . -}}
+{{ $soketiServiceName := include "coolify.soketi.serviceName" . -}}
+{{ $secretName := printf "%s-app-secrets" (include "coolify.fullname" .) -}}
+
+Coolify has been deployed to namespace `{{ $namespace }}`.
+
+1.  **Accessing the Coolify UI:**
+    {{ if .Values.coolifyApp.enabled }}
+    {{ if eq .Values.coolifyApp.service.type "LoadBalancer" }}
+    To get the Coolify UI URL, wait for the LoadBalancer to be assigned an external IP:
+        kubectl get svc --namespace {{ $namespace }} {{ $coolifyAppServiceName }} -w
+
+    You can then access Coolify at http://<EXTERNAL-IP>:{{ .Values.coolifyApp.service.port }}
+    (Default APP_URL inside containers is {{ .Values.config.APP_URL }}, ensure this matches your external setup for full functionality)
+
+    {{ else if eq .Values.coolifyApp.service.type "NodePort" }}
+    Get the NodePort for the Coolify service:
+        export NODE_PORT=$(kubectl get --namespace {{ $namespace }} -o jsonpath="{.spec.ports[0].nodePort}" services {{ $coolifyAppServiceName }})
+        export NODE_IP=$(kubectl get nodes --namespace {{ $namespace }} -o jsonpath="{.items[0].status.addresses[0].address}")
+    You can access Coolify at http://$NODE_IP:$NODE_PORT
+    (Default APP_URL inside containers is {{ .Values.config.APP_URL }}, ensure this matches your external setup for full functionality)
+
+    {{ else if eq .Values.coolifyApp.service.type "ClusterIP" }}
+    The Coolify UI service `{{ $coolifyAppServiceName }}` is only accessible within the cluster on port {{ .Values.coolifyApp.service.targetPort }}.
+    You might need to set up an Ingress controller or use `kubectl port-forward`:
+        kubectl port-forward --namespace {{ $namespace }} svc/{{ $coolifyAppServiceName }} {{ .Values.coolifyApp.service.port }}:{{ .Values.coolifyApp.service.targetPort }}
+    Then access at http://localhost:{{ .Values.coolifyApp.service.port }}
+    (Default APP_URL inside containers is {{ .Values.config.APP_URL }}, ensure this matches your external setup for full functionality)
+    {{ end }}
+    {{ else }}
+    Coolify core application (coolifyApp) is disabled.
+    {{ end }}
+
+2.  **Internal Services:**
+    {{ if .Values.postgresql.enabled }}
+    - PostgreSQL is running and accessible internally at:
+      `{{ $postgresServiceName }}.{{ $namespace }}.svc.cluster.local:5432`
+    {{ end }}
+    {{ if .Values.redis.enabled }}
+    - Redis is running and accessible internally at:
+      `{{ $redisServiceName }}.{{ $namespace }}.svc.cluster.local:6379`
+    {{ end }}
+    {{ if .Values.soketi.enabled }}
+    - Soketi (Realtime) is running and accessible internally at:
+      `{{ $soketiServiceName }}.{{ $namespace }}.svc.cluster.local:{{ .Values.soketi.service.appPort }}` (app)
+      `{{ $soketiServiceName }}.{{ $namespace }}.svc.cluster.local:{{ .Values.soketi.service.metricsPort }}` (metrics)
+    {{ end }}
+
+3.  **Generated Secrets:**
+    If you did not provide passwords or app keys in your `values.yaml`, they were auto-generated.
+    You can retrieve them from the Kubernetes secret `{{ $secretName }}`. For example, to get the auto-generated database password:
+
+    kubectl get secret --namespace {{ $namespace }} {{ $secretName }} -o jsonpath="{.data.DB_PASSWORD}" | base64 --decode
+
+    Available secret keys (values are base64 encoded):
+    - APP_ID
+    - APP_KEY
+    - DB_USERNAME (default: coolify, unless overridden)
+    - DB_PASSWORD
+    - REDIS_PASSWORD
+    - PUSHER_APP_ID
+    - PUSHER_APP_KEY
+    - PUSHER_APP_SECRET
+    {{ if .Values.secrets.ROOT_USERNAME }}
+    - ROOT_USERNAME
+    - ROOT_USER_EMAIL
+    - ROOT_USER_PASSWORD
+    {{ end }}
+    It is highly recommended to store these retrieved secrets securely.
+
+4.  **Configuration:**
+    Review your `values.yaml` or the command-line overrides used during installation for specific configurations.
+    To upgrade Coolify with new configurations, use `helm upgrade {{ .Release.Name }} . --namespace {{ $namespace }} -f your_values.yaml`.
+
+5.  **Persistent Data:**
+    Persistent Volume Claims have been created for:
+    {{ if .Values.coolifyApp.enabled }}
+    - Coolify shared data: `{{ include "coolify.sharedPvc.name" . }}`
+    {{ end }}
+    {{ if .Values.postgresql.enabled }}
+    - PostgreSQL data: `coolify-db-data-{{ include "coolify.postgresql.fullname" . }}-0`
+    {{ end }}
+    {{ if .Values.redis.enabled }}
+    - Redis data: `coolify-redis-data-{{ include "coolify.redis.fullname" . }}-0`
+    {{ end }}
+    Ensure your cluster has a default StorageClass or you have specified one for dynamic provisioning.
+
+Thank you for using the Coolify Helm chart!

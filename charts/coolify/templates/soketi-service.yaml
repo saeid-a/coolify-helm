@@ -1,0 +1,20 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "coolify.soketi.serviceName" . }}
+  namespace: {{ include "coolify.namespace" . }}
+  labels:
+    {{ include "coolify.labels" (merge (dict "componentName" "soketi") .) | nindent 4 }}
+spec:
+  type: {{ .Values.soketi.service.type | default "ClusterIP" }}
+  ports:
+    - name: app
+      port: {{ .Values.soketi.service.appPort | default 6001 }}
+      targetPort: soketi-app
+      protocol: TCP
+    - name: metrics
+      port: {{ .Values.soketi.service.metricsPort | default 6002 }}
+      targetPort: soketi-metrics
+      protocol: TCP
+  selector:
+    {{ include "coolify.selectorLabels" (merge (dict "componentName" "soketi") .) | nindent 4 }}

@@ -1,0 +1,88 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "coolify.configMap.name" . }}
+  namespace: {{ include "coolify.namespace" . }}
+  labels:
+    {{ include "coolify.labels" (merge (dict "componentName" "core") .) | nindent 4 }}
+data:
+  # Application configuration
+  APP_NAME: {{ .Values.config.APP_NAME | quote }}
+  APP_ENV: {{ .Values.config.APP_ENV | quote }}
+  APP_URL: {{ .Values.config.APP_URL | quote }}
+  APP_DEBUG: {{ .Values.config.APP_DEBUG | default "false" | quote }}
+  
+  # Registry configuration
+  REGISTRY_URL: {{ .Values.global.registryUrl | quote }}
+
+  # Laravel optimization settings
+  APP_OPTIMIZE: {{ .Values.config.APP_OPTIMIZE | default "true" | quote }}
+  VIEW_COMPILED_PATH: {{ .Values.config.VIEW_COMPILED_PATH | default "/var/www/html/storage/framework/views" | quote }}
+  SESSION_LIFETIME: {{ .Values.config.SESSION_LIFETIME | default "120" | quote }}
+  SANCTUM_STATEFUL_DOMAINS: {{ .Values.config.SANCTUM_STATEFUL_DOMAINS | default "localhost:8000,127.0.0.1:8000" | quote }}
+
+  # PHP configuration matching docker-compose
+  PHP_MEMORY_LIMIT: {{ .Values.coolifyApp.php.memoryLimit | default .Values.config.PHP_MEMORY_LIMIT | quote }}
+  PHP_FPM_PM_CONTROL: {{ .Values.coolifyApp.php.fpmPmControl | default .Values.config.PHP_FPM_PM_CONTROL | quote }}
+  PHP_FPM_PM_START_SERVERS: {{ .Values.coolifyApp.php.fpmPmStartServers | default .Values.config.PHP_FPM_PM_START_SERVERS | quote }}
+  PHP_FPM_PM_MIN_SPARE_SERVERS: {{ .Values.coolifyApp.php.fpmPmMinSpareServers | default .Values.config.PHP_FPM_PM_MIN_SPARE_SERVERS | quote }}
+  PHP_FPM_PM_MAX_SPARE_SERVERS: {{ .Values.coolifyApp.php.fpmPmMaxSpareServers | default .Values.config.PHP_FPM_PM_MAX_SPARE_SERVERS | quote }}
+
+  # Database configuration
+  DB_CONNECTION: {{ .Values.config.DB_CONNECTION | quote }}
+  DB_DATABASE: {{ .Values.config.DB_DATABASE | quote }}
+  DB_PORT: {{ .Values.config.DB_PORT | default "5432" | quote }}
+{{ if .Values.postgresql.enabled }}
+  DB_HOST: {{ printf "%s.%s.svc.cluster.local" (include "coolify.postgresql.serviceName" .) (include "coolify.namespace" .) | quote }}
+{{ else }}
+  DB_HOST: {{ .Values.config.DB_HOST | quote }}
+{{ end }}
+
+  # Redis configuration
+  {{ if .Values.redis.enabled }}
+  REDIS_HOST: {{ printf "%s.%s.svc.cluster.local" (include "coolify.redis.serviceName" .) (include "coolify.namespace" .) | quote }}
+  {{ else }}
+  REDIS_HOST: {{ .Values.config.REDIS_HOST | quote }}
+  {{ end }}
+  REDIS_PORT: {{ .Values.config.REDIS_PORT | default "6379" | quote }}
+
+  # Soketi configuration
+  SOKETI_DEBUG: {{ .Values.soketi.debug | default .Values.config.SOKETI_DEBUG | quote }}
+  
+  # Laravel Storage and File System Configuration
+  FILESYSTEM_DRIVER: "local"
+  FILESYSTEMS_DISK_LOCAL_ROOT: "/var/www/html/storage/app"
+  
+  # Laravel Cache Configuration
+  CACHE_DRIVER: "redis"
+  SESSION_DRIVER: "redis"
+  QUEUE_CONNECTION: "redis"
+  
+  # Laravel Logging Configuration
+  LOG_CHANNEL: "single"
+  LOG_DEPRECATIONS_CHANNEL: "null"
+  LOG_LEVEL: "info"
+  
+  # Laravel Broadcasting Configuration
+  BROADCAST_DRIVER: "pusher"
+  
+  # Laravel Session Configuration
+  SESSION_SECURE_COOKIE: "false"
+  SESSION_HTTP_ONLY: "true"
+  SESSION_SAME_SITE: "lax"
+  
+  # Laravel CORS Configuration
+  
+  # Coolify-specific Configuration
+  COOLIFY_APP_ENV: {{ .Values.config.APP_ENV | quote }}
+  COOLIFY_IS_CLOUD: {{ .Values.coolifyApp.isCloud | default "false" | quote }}
+  COOLIFY_AUTOUPDATE: {{ .Values.coolifyApp.autoUpdate | default "false" | quote }}
+    
+  # Directory Permissions
+  COOLIFY_STORAGE_PATH: "/var/www/html/storage/app"
+  COOLIFY_SSH_KEY_PATH: "/var/www/html/storage/app/ssh/keys"
+  
+  # Internal service ports
+  COOLIFY_INTERNAL_PORT: {{ .Values.coolifyApp.service.targetPort | quote }}
+  SOKETI_INTERNAL_PORT: {{ .Values.soketi.service.appPort | quote }}
+  SOKETI_METRICS_PORT: {{ .Values.soketi.service.metricsPort | quote }}

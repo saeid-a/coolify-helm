@@ -1,0 +1,7 @@
+{{/*
+This file ensures that Redis subchart uses the same password as Coolify
+*/}}
+{{ if .Values.redis.enabled }}
+---
+{{ include "coolify.sync.redisPassword" . }}
+{{ end }}
