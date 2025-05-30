@@ -77,13 +77,22 @@ jobs:
             yq -i '.appVersion = "${{ github.event.inputs.coolify_version }}"' charts/coolify/Chart.yaml
             yq -i '.version = "${{ steps.chart-version.outputs.chart_version }}"' charts/coolify/Chart.yaml
     
-      - name: Commit changes
+      - name: Check for changes and commit
         working-directory: charts/coolify
         run: |
-          git commit -m "Update Chart to ${{ steps.chart-version.outputs.chart_version }}." Chart.yaml
-          git tag -a "coolify-${{ steps.chart-version.outputs.chart_version }}" -m "Release Chart: ${{ steps.chart-version.outputs.chart_version }}"
-
-          git push --tags origin main
+          # Check if there are any changes to commit
+          if git diff --quiet Chart.yaml; then
+            echo "No changes detected in Chart.yaml, skipping commit"
+            # Still create and push the tag even if no chart changes
+            git tag -a "coolify-${{ steps.chart-version.outputs.chart_version }}" -m "Release Chart: ${{ steps.chart-version.outputs.chart_version }}"
+            git push --tags origin main
+          else
+            echo "Changes detected, committing and tagging"
+            git add Chart.yaml
+            git commit -m "Update Chart to ${{ steps.chart-version.outputs.chart_version }}"
+            git tag -a "coolify-${{ steps.chart-version.outputs.chart_version }}" -m "Release Chart: ${{ steps.chart-version.outputs.chart_version }}"
+            git push --tags origin main
+          fi
 
       - name: Install Helm
         uses: azure/setup-helm@v3
