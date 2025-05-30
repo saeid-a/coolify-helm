@@ -25,7 +25,9 @@ on:
 jobs:
   release:
     permissions:
-      contents: write
+      contents: write    # For creating releases and uploading assets
+      pages: write       # For updating GitHub Pages
+      id-token: write    # For GitHub Pages deployment
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -102,7 +104,7 @@ jobs:
           helm repo add bitnami https://charts.bitnami.com/bitnami
 
       - name: Run chart-releaser
-        uses: helm/chart-releaser-action@v1.6.0
+        uses: helm/chart-releaser-action@v1.7.0
         with:
           mark_as_latest: "${{ github.event.inputs.mark_latest }}"
         env:
