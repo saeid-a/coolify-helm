@@ -1,0 +1,7 @@
+{{/*
+This template configures the Redis subchart to use our Coolify secret.
+It sets the existingSecret to point to our main Coolify secret.
+*/}}
+{{ if .Values.redis.enabled }}
+{{ $_ := set .Values.redis.auth "existingSecret" (include "coolify.secret.name" .) }}
+{{ end }}

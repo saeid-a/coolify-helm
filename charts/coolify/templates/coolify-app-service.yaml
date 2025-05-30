@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "coolify.coolifyApp.serviceName" . }}
+  namespace: {{ include "coolify.namespace" . }}
+  labels:
+    {{ include "coolify.labels" (merge (dict "componentName" "core") .) | nindent 4 }}
+spec:
+  type: {{ .Values.coolifyApp.service.type | default "ClusterIP" }}
+  ports:
+    - port: {{ .Values.coolifyApp.service.port }}
+      targetPort: {{ .Values.coolifyApp.service.targetPort }}
+      protocol: TCP
+      name: http
+  selector:
+    {{ include "coolify.selectorLabels" (merge (dict "componentName" "core") .) | nindent 4 }}

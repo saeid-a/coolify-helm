@@ -1,0 +1,36 @@
+annotations:
+  images: |
+    - name: ghcr.io/coollabsio/coolify
+      image: ghcr.io/coollabsio/coolify:{{ .Chart.AppVersion }}
+
+apiVersion: v2
+name: coolify
+description: A Helm chart for deploying Coolify, the self-hostable open-source PaaS.
+type: application
+version: 0.2.2 # Chart version
+appVersion: 4.0.0-beta.418
+# Security updates in v0.2.1:
+# - Added global securityContext configuration with pod and container-level settings
+# - Improved privilege control and configuration
+icon: https://coolify.io/coolify-logo.png
+home: https://coolify.io/
+sources:
+  - https://github.com/coollabsio/coolify
+  - https://github.com/saeid-a/coolify-helm
+keywords:
+  - paas
+  - coolify
+  - self-hosted
+  - platform
+maintainers:
+  - name: Saeid Aghapour
+    email: saeid.aghapour@gmail.com
+dependencies:
+  - name: postgresql
+    version: 16.0.0
+    repository: https://charts.bitnami.com/bitnami
+    condition: postgresql.enabled
+  - name: redis
+    version: 21.1.9
+    repository: https://charts.bitnami.com/bitnami
+    condition: redis.enabled

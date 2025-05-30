@@ -1,0 +1,35 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "coolify.coolifyApp.fullname" . }}
+  namespace: {{ include "coolify.namespace" . }}
+  labels:
+    {{ include "coolify.labels" (merge (dict "componentName" "core") .) | nindent 4 }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      {{ include "coolify.selectorLabels" (merge (dict "componentName" "core") .) | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{ include "coolify.labels" (merge (dict "componentName" "core") .) | nindent 8 }}
+    spec:
+      {{- if .Values.coolifyApp.migration.timeout }}
+      terminationGracePeriodSeconds: {{ .Values.coolifyApp.migration.timeout }}
+      {{- end }}
+      securityContext:
+        {{ include "coolify.securityContext.pod" . | nindent 8 }}
+      initContainers:
+        # Storage setup init container
+        {{ include "coolify.initContainer.setupStorage" . | nindent 8 }}
+{{ if .Values.coolifyApp.migration.enabled }}
+        # Database migration init container
+        {{ include "coolify.initContainer.databaseMigration" . | nindent 8 }}
+{{ end }}
+      containers:
+        {{ include "coolify.container.main" . | nindent 8 }}
+      volumes:
+        - name: shared-data
+          persistentVolumeClaim:
+            claimName: {{ include "coolify.sharedPvc.name" . }}

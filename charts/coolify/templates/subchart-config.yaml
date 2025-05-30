@@ -1,0 +1,44 @@
+{{/*
+This template configures the subcharts to use the pre-generated secrets
+*/}}
+{{ if .Values.postgresql.enabled }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Release.Name }}-postgresql-config
+  namespace: {{ include "coolify.namespace" . }}
+  labels:
+    {{ include "coolify.labels" (merge (dict "componentName" "postgresql") .) | nindent 4 }}
+  annotations:
+    "helm.sh/hook": pre-install,pre-upgrade
+    "helm.sh/hook-weight": "-1"
+data:
+  values.yaml: |
+    auth:
+      existingSecret: {{ include "coolify.postgresql.fullname" . }}
+      secretKeys:
+        adminPasswordKey: postgres-password
+        userPasswordKey: password
+      username: {{ .Values.postgresql.auth.username }}
+      database: {{ .Values.postgresql.auth.database }}
+{{ end }}
+{{ if .Values.redis.enabled }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Release.Name }}-redis-config
+  namespace: {{ include "coolify.namespace" . }}
+  labels:
+    {{ include "coolify.labels" (merge (dict "componentName" "redis") .) | nindent 4 }}
+  annotations:
+    "helm.sh/hook": pre-install,pre-upgrade
+    "helm.sh/hook-weight": "-1"
+data:
+  values.yaml: |
+    auth:
+      enabled: true
+      existingSecret: {{ include "coolify.redis.fullname" . }}
+      existingSecretPasswordKey: redis-password
+{{ end }}

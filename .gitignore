@@ -1,0 +1,15 @@
+# IDE/Editor directories
+.idea
+.trunk
+.vscode
+.cursor/
+
+# Helm chart dependencies (downloaded packages)
+charts/*/charts/*.tgz
+
+# Temporary debug and test scripts
+debug-*.sh
+test-*.sh
+
+# Temporary validation scripts in chart directory
+charts/*/validate-*.sh

@@ -1,0 +1,22 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "coolify.sharedPvc.name" . }}
+  namespace: {{ include "coolify.namespace" . }}
+  labels:
+    {{ include "coolify.labels" (merge (dict "componentName" "shared") .) | nindent 4 }}
+spec:
+  accessModes:
+    {{ range .Values.sharedDataPvc.accessModes }}
+    - {{ . | quote }}
+    {{ end }}
+  resources:
+    requests:
+      storage: {{ .Values.sharedDataPvc.size | quote }}
+  {{ if .Values.sharedDataPvc.storageClassName }}
+    {{ if (eq "-" .Values.sharedDataPvc.storageClassName) }}
+      storageClassName: ""
+    {{ else }}
+      storageClassName: {{ .Values.sharedDataPvc.storageClassName | quote }}
+    {{ end }}
+  {{ end }}

@@ -1,0 +1,79 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "coolify.soketi.fullname" . }}
+  namespace: {{ include "coolify.namespace" . }}
+  labels:
+    {{ include "coolify.labels" (merge (dict "componentName" "soketi") .) | nindent 4 }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      {{ include "coolify.selectorLabels" (merge (dict "componentName" "soketi") .) | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{ include "coolify.labels" (merge (dict "componentName" "soketi") .) | nindent 8 }}
+    spec:
+      {{ if .Values.securityContext.enabled }}
+      securityContext:
+        runAsUser: {{ .Values.securityContext.runAsUser }}
+        runAsGroup: {{ .Values.securityContext.runAsGroup }}
+        fsGroup: {{ .Values.securityContext.fsGroup }}
+        runAsNonRoot: {{ .Values.securityContext.runAsNonRoot }}
+      {{ end }}
+      containers:
+        - name: soketi
+          image: "{{ .Values.soketi.image.repository }}:{{ .Values.soketi.image.tag }}"
+          # Updated container securityContext to properly reference global values
+          {{ if .Values.securityContext.enabled }}
+          securityContext:
+            runAsUser: {{ .Values.securityContext.runAsUser }}
+            runAsGroup: {{ .Values.securityContext.runAsGroup }}
+            allowPrivilegeEscalation: {{ .Values.securityContext.allowPrivilegeEscalation }}
+            readOnlyRootFilesystem: {{ .Values.securityContext.readOnlyRootFilesystem }}
+            {{ if .Values.securityContext.capabilities }}
+            capabilities:
+{{ toYaml .Values.securityContext.capabilities | indent 14 }}
+            {{ end }}
+          {{ end }}
+          ports:
+            - name: soketi-app
+              containerPort: 6001
+            - name: soketi-metrics
+              containerPort: 6002
+          envFrom:
+            - configMapRef:
+                name: {{ include "coolify.configMap.name" . }} # For APP_NAME, SOKETI_DEBUG
+            - secretRef:
+                name: {{ include "coolify.secret.name" . }} # For PUSHER_* vars
+          volumeMounts: # Shares the SSH keys if needed, like in compose
+            - name: shared-data
+              mountPath: /data
+              subPath: coolify/ssh # Ensure this subpath is consistent if used
+          readinessProbe:
+            exec:
+              command:
+                - /bin/sh
+                - -c
+                - "wget -qO- http://127.0.0.1:6001/ready && wget -qO- http://127.0.0.1:6002/ready"
+            initialDelaySeconds: 10
+            periodSeconds: 5
+            timeoutSeconds: 2
+            failureThreshold: 10
+          livenessProbe:
+            exec:
+              command:
+                - /bin/sh
+                - -c
+                - "wget -qO- http://127.0.0.1:6001/ready && wget -qO- http://127.0.0.1:6002/ready"
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 2
+            failureThreshold: 3
+          resources:
+            {{- toYaml .Values.soketi.resources | nindent 12 }}
+      volumes:
+        - name: shared-data
+          persistentVolumeClaim:
+            claimName: {{ include "coolify.sharedPvc.name" . }}
