@@ -2,12 +2,11 @@ annotations:
   images: |
     - name: ghcr.io/coollabsio/coolify
       image: ghcr.io/coollabsio/coolify:{{ .Chart.AppVersion }}
-
 apiVersion: v2
 name: coolify
 description: A Helm chart for deploying Coolify, the self-hostable open-source PaaS.
 type: application
-version: 0.2.2 # Chart version
+version: 0.3.0 # Chart version
 appVersion: 4.0.0-beta.418
 # Security updates in v0.2.1:
 # - Added global securityContext configuration with pod and container-level settings
