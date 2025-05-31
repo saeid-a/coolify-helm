@@ -1,37 +1,157 @@
-# Coolify Helm Chart
+# Coolify Helm Chart (Community)
 
-This Helm chart deploys [Coolify](https://coolify.io/), a self-hostable open-source PaaS (Platform as a Service) for managing applications, databases, and services with a modern UI.
+This is a **community-maintained** production-ready Helm chart for deploying [Coolify](https://coolify.io/), a self-hostable open-source PaaS (Platform as a Service) for managing applications, databases, and services with a modern UI.
+
+> **⚠️ Important Notice**: This is an **unofficial community project** and is not maintained by or affiliated with the official Coolify team. For official Coolify support, please visit the [official Coolify documentation](https://coolify.io/docs) and [GitHub repository](https://github.com/coollabsio/coolify).
 
 ## Prerequisites
 
-- Kubernetes 1.19+
-- Helm 3.2.0+
-- PV provisioner support in the underlying infrastructure
-- LoadBalancer support (optional, for external access)
+### Minimum Requirements
+- **Kubernetes**: 1.24+ (recommended 1.28+)
+- **Helm**: 3.8.0+
+- **Storage**: Persistent Volume provisioner
+- **Resources**: 2 CPU cores, 4GB RAM minimum per node
 
-## Installing the Chart
+### Production Requirements
+- **Load Balancer**: For external access (NGINX Ingress, AWS ALB, etc.)
+- **DNS**: Wildcard DNS for application routing
+- **Certificates**: TLS certificates for HTTPS (cert-manager recommended)
+- **Monitoring**: Prometheus/Grafana for observability
+- **Backup**: Volume snapshot capability for data protection
 
-To install the chart with the release name `coolify`:
+## Quick Start
+
+### Adding the Helm Repository
+
+This chart is published to GitHub Pages and can be added as a Helm repository:
 
 ```bash
-# Add the repository (replace with your actual repository)
-helm repo add coolify-repo https://your-repo-url/charts
-
-# Update the repository
+# Add the community Coolify Helm repository
+helm repo add coolify-community https://saeid-a.github.io/coolify-helm
 helm repo update
-
-# Install the chart
-helm install coolify coolify-repo/coolify --namespace coolify --create-namespace
 ```
 
-Or to install from local chart directory:
+> **📦 Chart Distribution**: The Helm charts are automatically packaged and published to GitHub Pages using GitHub Actions. Each release creates a new chart version available through the repository.
+
+### Development Installation
+
+For development and testing environments:
 
 ```bash
-# Navigate to the chart directory
-cd charts/coolify
+# Install with development defaults
+helm install coolify coolify-community/coolify \
+  --namespace coolify \
+  --create-namespace \
+  --set config.APP_URL=http://localhost:8000
+```
 
-# Install with authentication fixes applied
-helm install coolify . --namespace coolify --create-namespace
+### Production Installation
+
+For production deployments with high availability:
+
+```bash
+# Create production values file
+cat > production-values.yaml << EOF
+# Production configuration
+config:
+  APP_URL: https://coolify.your-domain.com
+  APP_ENV: production
+  APP_DEBUG: false
+
+# Enable high availability
+coolifyApp:
+  replicaCount: 3
+  autoscaling:
+    enabled: true
+    minReplicas: 3
+    maxReplicas: 10
+    targetCPUUtilizationPercentage: 70
+  podDisruptionBudget:
+    enabled: true
+    minAvailable: 2
+  resources:
+    requests:
+      memory: "1Gi"
+      cpu: "500m"
+    limits:
+      memory: "2Gi"
+      cpu: "1000m"
+
+# Enable soketi autoscaling
+soketi:
+  replicaCount: 2
+  autoscaling:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 5
+
+# Production-grade storage
+sharedDataPvc:
+  size: 50Gi
+  storageClassName: fast-ssd
+
+postgresql:
+  primary:
+    persistence:
+      size: 20Gi
+      storageClass: fast-ssd
+    resources:
+      requests:
+        memory: 1Gi
+        cpu: 500m
+      limits:
+        memory: 2Gi
+        cpu: 1000m
+
+# Enable ingress with TLS
+ingress:
+  enabled: true
+  className: nginx
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+  hosts:
+    - host: coolify.your-domain.com
+      paths:
+        - path: /
+          pathType: Prefix
+  tls:
+    - secretName: coolify-tls
+      hosts:
+        - coolify.your-domain.com
+
+# Security hardening
+securityContext:
+  enabled: true
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: false
+
+# Enable monitoring
+serviceMonitor:
+  enabled: true
+  namespace: monitoring
+EOF
+
+# Deploy with production configuration
+helm install coolify coolify-community/coolify \
+  --namespace coolify \
+  --create-namespace \
+  --values production-values.yaml \
+  --timeout 10m
+```
+
+### Local Development Installation
+
+```bash
+# Clone the repository
+git clone <repository-url>
+cd coolify-helm
+
+# Install from local chart with authentication fixes
+helm install coolify ./charts/coolify \
+  --namespace coolify \
+  --create-namespace \
+  --set config.APP_URL=http://localhost:8000
 ```
 
 > **🔐 Authentication Fix**: This chart includes fixes for Redis "WRONGPASS" and PostgreSQL authentication issues. All passwords are automatically synchronized between Coolify and its dependencies.
@@ -155,6 +275,37 @@ The chart mounts persistent volumes for:
 - Global security context settings can be configured in values.yaml
 - See [SECURITY-CONTEXT.md](./SECURITY-CONTEXT.md) for detailed security configuration
 
+## 🚀 Production Features
+
+✅ **High Availability & Scaling**
+- Pod Disruption Budgets (PDB) for zero-downtime maintenance
+- Horizontal Pod Autoscaler (HPA) with CPU/memory metrics
+- Multi-replica support with proper load balancing
+
+✅ **Security & Compliance**
+- Automated secret generation with secure defaults
+- Configurable security contexts and Pod Security Standards
+- RBAC ready configuration
+- Non-root container execution where possible
+
+✅ **Operational Excellence**
+- Comprehensive health checks and monitoring
+- Automatic database migrations with rollback support
+- Resource management with requests/limits
+- Persistent storage with proper backup strategies
+
+✅ **Enterprise Ready**
+- Support for external databases (PostgreSQL, Redis)
+- Ingress configuration with TLS termination
+- Network policies for micro-segmentation
+- Prometheus metrics and observability
+
 ## Contributing
 
-Pull requests are welcome. For major changes, please open an issue first to discuss what you would like to change.
+This is a community-maintained project. Pull requests are welcome! For major changes, please open an issue first to discuss what you would like to change.
+
+### Reporting Issues
+
+- For issues with this Helm chart specifically, please open an issue in this repository
+- For general Coolify questions or issues, please refer to the [official Coolify repository](https://github.com/coollabsio/coolify)
+- Make sure to specify that you're using this community Helm chart when reporting issues
