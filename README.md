@@ -215,7 +215,9 @@ The following table lists the configurable parameters of the Coolify chart and t
 
 Refer to [values.yaml](./charts/coolify/values.yaml) for the full list of parameters.
 
-## Production Readiness Features
+## 🚀 Production Features
+
+This Helm chart is designed with enterprise-grade capabilities to ensure reliable, secure, and scalable Coolify deployments in production Kubernetes environments.
 
 ### High Availability & Scaling
 
@@ -223,7 +225,7 @@ Refer to [values.yaml](./charts/coolify/values.yaml) for the full list of parame
 - **Horizontal Pod Autoscaler (HPA)**: Optional autoscaling based on CPU and memory utilization
 - **Resource Management**: Pre-configured resource requests and limits for optimal resource allocation
 
-### Example: Enable Autoscaling
+#### Example: Enable Autoscaling
 
 ```yaml
 # values.yaml
@@ -243,7 +245,7 @@ soketi:
     targetCPUUtilizationPercentage: 80
 ```
 
-### Example: Customize Pod Disruption Budget
+#### Example: Customize Pod Disruption Budget
 
 ```yaml
 # values.yaml
@@ -259,6 +261,24 @@ soketi:
     enabled: true
     minAvailable: 1
 ```
+
+### Security & Compliance
+- Automated secret generation with secure defaults
+- Configurable security contexts and Pod Security Standards
+- RBAC ready configuration
+- Non-root container execution where possible
+
+### Operational Excellence
+- Comprehensive health checks and monitoring
+- Automatic database migrations with rollback support
+- Resource management with requests/limits
+- Persistent storage with proper backup strategies
+
+### Enterprise Ready
+- Support for external databases (PostgreSQL, Redis)
+- Ingress configuration with TLS termination
+- Network policies for micro-segmentation
+- Prometheus metrics and observability
 
 ## Architecture
 
@@ -284,32 +304,148 @@ The chart mounts persistent volumes for:
 - Global security context settings can be configured in values.yaml
 - See [SECURITY-CONTEXT.md](./SECURITY-CONTEXT.md) for detailed security configuration
 
-## 🚀 Production Features
+## External Database Configuration
 
-This Helm chart is designed with enterprise-grade capabilities to ensure reliable, secure, and scalable Coolify deployments in production Kubernetes environments.
+For production environments, you may want to use external managed databases instead of the bundled PostgreSQL and Redis.
 
-✅ **High Availability & Scaling**
-- Pod Disruption Budgets (PDB) for zero-downtime maintenance
-- Horizontal Pod Autoscaler (HPA) with CPU/memory metrics
-- Multi-replica support with proper load balancing
+### External PostgreSQL
 
-✅ **Security & Compliance**
-- Automated secret generation with secure defaults
-- Configurable security contexts and Pod Security Standards
-- RBAC ready configuration
-- Non-root container execution where possible
+```yaml
+# values.yaml
+postgresql:
+  enabled: false  # Disable bundled PostgreSQL
 
-✅ **Operational Excellence**
-- Comprehensive health checks and monitoring
-- Automatic database migrations with rollback support
-- Resource management with requests/limits
-- Persistent storage with proper backup strategies
+config:
+  DB_HOST: your-postgres-host.amazonaws.com
+  DB_PORT: "5432"
+  DB_DATABASE: coolify
+  DB_USERNAME: coolify
 
-✅ **Enterprise Ready**
-- Support for external databases (PostgreSQL, Redis)
-- Ingress configuration with TLS termination
-- Network policies for micro-segmentation
-- Prometheus metrics and observability
+secrets:
+  DB_PASSWORD: your-secure-database-password
+```
+
+### External Redis
+
+```yaml
+# values.yaml
+redis:
+  enabled: false  # Disable bundled Redis
+
+config:
+  REDIS_HOST: your-redis-cluster.cache.amazonaws.com
+  REDIS_PORT: "6379"
+
+secrets:
+  REDIS_PASSWORD: your-secure-redis-password  # If authentication is enabled
+```
+
+## Monitoring & Observability
+
+### Prometheus Integration
+
+The chart includes built-in Prometheus ServiceMonitor support:
+
+```yaml
+# values.yaml
+serviceMonitor:
+  enabled: true
+  namespace: monitoring
+  interval: 30s
+  scrapeTimeout: 10s
+  labels:
+    release: prometheus-operator
+```
+
+### Grafana Dashboard
+
+A pre-built Grafana dashboard is available for monitoring Coolify metrics. Import dashboard ID `[TBD]` or use the JSON file in the `monitoring/` directory.
+
+### Log Aggregation
+
+For centralized logging, configure your log aggregator to collect from:
+- Coolify app pods: `/var/log/coolify/*.log`
+- PostgreSQL logs: via sidecar container
+- NGINX access logs: stdout
+
+## Troubleshooting
+
+### Common Issues
+
+#### 1. Database Connection Errors
+```bash
+# Check PostgreSQL connectivity
+kubectl exec -it deployment/coolify-postgresql -- psql -U coolify -d coolify -c "SELECT version();"
+
+# Check database migration status
+kubectl logs deployment/coolify-app -c migration-init
+```
+
+#### 2. Redis Authentication Issues
+```bash
+# Verify Redis password synchronization
+kubectl get secret coolify-secret -o jsonpath='{.data.REDIS_PASSWORD}' | base64 -d
+kubectl get secret coolify-redis -o jsonpath='{.data.redis-password}' | base64 -d
+```
+
+#### 3. Ingress/TLS Issues
+```bash
+# Check certificate generation
+kubectl describe certificate coolify-tls
+kubectl get certificaterequests
+
+# Verify ingress configuration
+kubectl describe ingress coolify-ingress
+```
+
+### Debug Mode
+
+Enable debug logging for troubleshooting:
+
+```yaml
+# values.yaml
+config:
+  APP_DEBUG: true
+  LOG_LEVEL: debug
+```
+
+⚠️ **Remember to disable debug mode in production!**
+
+## Upgrading
+
+### Chart Upgrades
+
+```bash
+# Update repository
+helm repo update coolify-community
+
+# Check for new versions
+helm search repo coolify-community/coolify --versions
+
+# Upgrade with values preservation
+helm upgrade coolify coolify-community/coolify \
+  --namespace coolify \
+  --values production-values.yaml \
+  --timeout 10m
+```
+
+### Application Upgrades
+
+The chart automatically follows Coolify's release cycle. To upgrade to a specific Coolify version:
+
+```yaml
+# values.yaml
+coolifyApp:
+  image:
+    tag: "4.0.0-beta.350"  # Specify exact version
+```
+
+### Migration Notes
+
+- **v1.0.0 → v2.0.0**: Breaking changes in storage configuration
+- **v0.x → v1.0.0**: Initial stable release, database migration required
+
+See [CHANGELOG.md](./CHANGELOG.md) for detailed upgrade instructions.
 
 ## Contributing
 
