@@ -4,6 +4,43 @@ This is a **community-maintained** production-ready Helm chart for deploying [Co
 
 > **⚠️ Important Notice**: This is an **unofficial community project** and is not maintained by or affiliated with the official Coolify team. For official Coolify support, please visit the [official Coolify documentation](https://coolify.io/docs) and [GitHub repository](https://github.com/coollabsio/coolify).
 
+## Table of Contents
+
+- [Prerequisites](#prerequisites)
+  - [Minimum Requirements](#minimum-requirements)
+  - [Production Requirements](#production-requirements)
+- [Quick Start](#quick-start)
+  - [Add the Helm Repository](#add-the-helm-repository)
+  - [Development Installation](#development-installation)
+  - [Production Installation](#production-installation)
+  - [Local Development Installation](#local-development-installation)
+- [Uninstalling the Chart](#uninstalling-the-chart)
+- [Configuration](#configuration)
+- [🚀 Production Features](#-production-features)
+  - [High Availability & Scaling](#high-availability--scaling)
+  - [Security & Compliance](#security--compliance)
+  - [Operational Excellence](#operational-excellence)
+  - [Enterprise Ready](#enterprise-ready)
+- [Architecture](#architecture)
+- [Persistence](#persistence)
+- [Security Considerations](#security-considerations)
+- [External Database Configuration](#external-database-configuration)
+  - [External PostgreSQL](#external-postgresql)
+  - [External Redis](#external-redis)
+- [Monitoring & Observability](#monitoring--observability)
+  - [Prometheus Integration](#prometheus-integration)
+  - [Grafana Dashboard](#grafana-dashboard)
+  - [Log Aggregation](#log-aggregation)
+- [Troubleshooting](#troubleshooting)
+  - [Common Issues](#common-issues)
+  - [Debug Mode](#debug-mode)
+- [Upgrading](#upgrading)
+  - [Chart Upgrades](#chart-upgrades)
+  - [Application Upgrades](#application-upgrades)
+  - [Migration Notes](#migration-notes)
+- [Contributing](#contributing)
+  - [Reporting Issues](#reporting-issues)
+
 ## Prerequisites
 
 ### Minimum Requirements
@@ -21,7 +58,7 @@ This is a **community-maintained** production-ready Helm chart for deploying [Co
 
 ## Quick Start
 
-### Adding the Helm Repository
+### Add the Helm Repository
 
 This chart is published to GitHub Pages and can be added as a Helm repository:
 
@@ -153,7 +190,7 @@ helm install coolify coolify-community/coolify \
 
 ```bash
 # Clone the repository
-git clone <repository-url>
+git clone https://github.com/saeid-a/coolify-helm.git
 cd coolify-helm
 
 # Install from local chart with authentication fixes
@@ -274,7 +311,7 @@ soketi:
 - Resource management with requests/limits
 - Persistent storage with proper backup strategies
 
-### Enterprise Ready
+### Enterprise-Ready
 - Support for external databases (PostgreSQL, Redis)
 - Ingress configuration with TLS termination
 - Network policies for micro-segmentation
