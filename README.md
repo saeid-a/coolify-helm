@@ -52,84 +52,93 @@ For production deployments with high availability:
 ```bash
 # Create production values file
 cat > production-values.yaml << EOF
-# Production configuration
+# ===== Application Configuration =====
+# Core Coolify settings - adjust APP_URL to match your domain
 config:
-  APP_URL: https://coolify.your-domain.com
-  APP_ENV: production
-  APP_DEBUG: false
+  APP_URL: https://coolify.your-domain.com  # Must match your actual domain
+  APP_ENV: production                       # Enables production optimizations
+  APP_DEBUG: false                         # Disable debug mode for security
 
-# Enable high availability
+# ===== High Availability Configuration =====
+# Main Coolify application scaling and reliability settings
 coolifyApp:
-  replicaCount: 3
+  replicaCount: 3                         # Start with 3 replicas for HA
   autoscaling:
-    enabled: true
-    minReplicas: 3
-    maxReplicas: 10
-    targetCPUUtilizationPercentage: 70
+    enabled: true                         # Enable automatic scaling based on load
+    minReplicas: 3                        # Never scale below 3 for HA
+    maxReplicas: 10                       # Maximum replicas under high load
+    targetCPUUtilizationPercentage: 70    # Scale up when CPU exceeds 70%
   podDisruptionBudget:
-    enabled: true
-    minAvailable: 2
+    enabled: true                         # Prevent all pods from being terminated during maintenance
+    minAvailable: 2                       # Always keep at least 2 pods running
   resources:
-    requests:
-      memory: "1Gi"
-      cpu: "500m"
-    limits:
-      memory: "2Gi"
-      cpu: "1000m"
+    requests:                             # Guaranteed resources per pod
+      memory: "1Gi"                       # Minimum memory allocation
+      cpu: "500m"                         # Minimum CPU allocation (0.5 cores)
+    limits:                               # Maximum resources per pod
+      memory: "2Gi"                       # Maximum memory before OOM kill
+      cpu: "1000m"                        # Maximum CPU usage (1 core)
 
-# Enable soketi autoscaling
+# ===== Real-time Service Configuration =====
+# Soketi handles WebSocket connections for real-time features
 soketi:
-  replicaCount: 2
+  replicaCount: 2                         # Start with 2 replicas for redundancy
   autoscaling:
-    enabled: true
-    minReplicas: 2
-    maxReplicas: 5
+    enabled: true                         # Enable automatic scaling for WebSocket load
+    minReplicas: 2                        # Minimum replicas for redundancy
+    maxReplicas: 5                        # Maximum replicas for WebSocket connections
 
-# Production-grade storage
+# ===== Storage Configuration =====
+# Persistent storage for application data and logs
 sharedDataPvc:
-  size: 50Gi
-  storageClassName: fast-ssd
+  size: 50Gi                              # Storage size for Coolify data (adjust based on usage)
+  storageClassName: fast-ssd              # Use fast SSD storage class for better performance
 
+# ===== Database Configuration =====
+# PostgreSQL settings for production workloads
 postgresql:
   primary:
     persistence:
-      size: 20Gi
-      storageClass: fast-ssd
+      size: 20Gi                          # Database storage size (adjust based on data volume)
+      storageClass: fast-ssd              # Use fast SSD for database performance
     resources:
-      requests:
-        memory: 1Gi
-        cpu: 500m
-      limits:
-        memory: 2Gi
-        cpu: 1000m
+      requests:                           # Guaranteed database resources
+        memory: 1Gi                       # Minimum memory for PostgreSQL
+        cpu: 500m                         # Minimum CPU for database operations
+      limits:                             # Maximum database resources
+        memory: 2Gi                       # Maximum memory before OOM kill
+        cpu: 1000m                        # Maximum CPU for database operations
 
-# Enable ingress with TLS
+# ===== External Access Configuration =====
+# Ingress controller setup for HTTPS access
 ingress:
-  enabled: true
-  className: nginx
+  enabled: true                           # Enable external access via ingress
+  className: nginx                        # Use NGINX ingress controller
   annotations:
-    cert-manager.io/cluster-issuer: letsencrypt-prod
-    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    cert-manager.io/cluster-issuer: letsencrypt-prod  # Automatic SSL certificate generation
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"  # Force HTTPS redirects
   hosts:
-    - host: coolify.your-domain.com
+    - host: coolify.your-domain.com       # Your actual domain name
       paths:
-        - path: /
+        - path: /                         # Serve all paths
           pathType: Prefix
   tls:
-    - secretName: coolify-tls
+    - secretName: coolify-tls             # TLS certificate secret name
       hosts:
-        - coolify.your-domain.com
+        - coolify.your-domain.com         # Domain for SSL certificate
 
-# Security hardening
+# ===== Security Configuration =====
+# Pod security settings for production environments
 securityContext:
-  enabled: true
-  allowPrivilegeEscalation: false
-  readOnlyRootFilesystem: false
+  enabled: true                           # Enable security context restrictions
+  allowPrivilegeEscalation: false        # Prevent privilege escalation attacks
+  readOnlyRootFilesystem: false          # Allow writes to root filesystem (required for Coolify)
 
-# Enable monitoring
+# ===== Monitoring Configuration =====
+# Prometheus monitoring integration
 serviceMonitor:
-  enabled: true
-  namespace: monitoring
+  enabled: true                           # Enable Prometheus metrics collection
+  namespace: monitoring                   # Namespace where Prometheus is installed
 EOF
 
 # Deploy with production configuration
@@ -276,6 +285,8 @@ The chart mounts persistent volumes for:
 - See [SECURITY-CONTEXT.md](./SECURITY-CONTEXT.md) for detailed security configuration
 
 ## 🚀 Production Features
+
+This Helm chart is designed with enterprise-grade capabilities to ensure reliable, secure, and scalable Coolify deployments in production Kubernetes environments.
 
 ✅ **High Availability & Scaling**
 - Pod Disruption Budgets (PDB) for zero-downtime maintenance
